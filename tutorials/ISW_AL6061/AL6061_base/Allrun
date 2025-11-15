@@ -1,0 +1,52 @@
+#!/bin/sh
+
+# module purge
+
+# Clean any inherited MPI settings
+# unset OMPI_MCA_*
+# unset MPI_HOME
+
+# Point to your local OpenMPI install
+# export PATH="$HOME/opt/openmpi-5.0.7/bin:$PATH"
+# export LD_LIBRARY_PATH="$HOME/opt/openmpi-5.0.7/lib${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
+
+export PATH="/opt/openmpi/bin:$PATH"
+export LD_LIBRARY_PATH="/opt/openmpi/lib${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
+
+
+
+export WM_PROJECT_DIR=$HOME/OpenFOAM/OpenFOAM-10
+source "$WM_PROJECT_DIR/etc/bashrc"
+export FOAM_SIGFPE=0
+
+# Verify it's picking your local mpirun
+which mpirun
+mpirun --version
+
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+echo "Copying 'initial' to 0"
+cp -r initial 0
+
+echo "Running blockMesh"
+runApplication blockMesh
+
+echo "Running setSolidFraction"
+runApplication setSolidFraction
+
+echo "Running transformPoints with rotation"
+runApplication transformPoints "rotate=((0 1 0) (0 0 1))"
+
+echo "Decomposing domain for parallel run"
+decomposePar
+mpirun --oversubscribe -np 32 laserbeamFoam -parallel
+
+#mpirun -np 8 laserbeamFoam -parallel
+#mpirun -np 16 laserbeamFoam -parallel
+
+echo "Reconstructing fields from parallel run"
+reconstructPar
+
+foamToVTK -useTimeName

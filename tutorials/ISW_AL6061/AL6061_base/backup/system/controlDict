@@ -1,0 +1,48 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  3.0.1                                 |
+|   \\  /    A nd           | Web:      www.openfoam.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     Flint_multiphaseEulerFoamD;
+
+startFrom       latestTime;
+startTime       0;
+
+stopAt          endTime;
+endTime         1000e-6;        // 1.0 × 10⁻³ s total simulation time
+
+deltaT          1e-7;           // fixed time step size = 1 × 10⁻⁷ s
+
+writeControl    timeStep;       // output every N time steps
+writeInterval   100;             //      … every 10 steps
+
+purgeWrite      0;
+writeFormat     ascii;
+writePrecision  10;
+writeCompression uncompressed;
+
+timeFormat      general;
+timePrecision   10;
+
+runTimeModifiable no;
+
+adjustTimeStep  no;             // disable adaptive Δt
+
+maxCo           0.25;           // (unused when adjustTimeStep=no, but set for reference)
+maxAlphaCo      0.25;        // omit or leave commented if not needed
+// maxDeltaT       5e-5;        // omit if not using adaptive Δt
+
+// ************************************************************************* //
+

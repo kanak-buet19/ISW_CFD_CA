@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Source tutorial clean functions (assumes WM_PROJECT_DIR is set)
+. $WM_PROJECT_DIR/bin/tools/CleanFunctions
+
+# Clean subcase
+(cd DEM_small && ./Allclean)
+
+# Standard OpenFOAM cleanup
+cleanCase
+
+echo "Removing 0, VTKs, and leftover output/log files"
+
+rm -rf 0 VTKs
+
+# remove common job output/log files
+rm -f *.out *.err *.log
+
+# remove the literal '$log' file if present
+rm -f '$log'
+
+rm -r testing/vtk 
+rm -r testing/plots
+
+rm -r testing/*
