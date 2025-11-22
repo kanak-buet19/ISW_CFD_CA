@@ -63,23 +63,20 @@ Download from: [paraview.org/download](https://www.paraview.org/download/)
 
 ### Parametric Study Setup
 
-1. **Configure template path** in script:
+1. **Configure template path** in parametric_study.py:
 ```python
 TEMPLATE_PATH = "/path/to/your/template/case"
 ```
 
-2. **Generate example CSV files:**
-```bash
-python3 script.py --create-examples
-```
 
-3. **Run simulations:**
+
+2. **Run simulations:**
 ```bash
 # Generate cases only
-python3 script.py --csv parameters.csv --output my_cases
+python3 parametric_study.py --csv all_cases.csv --output cases
 
 # Generate and submit to SLURM
-python3 script.py --csv parameters.csv --output my_cases --submit
+python3 parametric_study.py --csv all_cases.csv --output cases --submit
 ```
 
 ### CSV Parameters
