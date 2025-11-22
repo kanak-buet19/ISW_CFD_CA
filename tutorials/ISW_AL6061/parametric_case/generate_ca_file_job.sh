@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=32
 #SBATCH --mem=100G
-#SBATCH --account=
+#SBATCH --account= use account name #search account name using this command : sacctmgr show user $USER
 #SBATCH --output=pipeline_output_%j.out
 #SBATCH --error=pipeline_output_%j.err
 

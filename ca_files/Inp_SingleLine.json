@@ -1,0 +1,35 @@
+{
+   "SimulationType": "FromFile",
+   "MaterialFileName": "/home/kanak/ExaCA/examples/Materials/Al6061.json",
+   "GrainOrientationFile": "GrainOrientationVectors.csv",
+   "RandomSeed": 0,
+   "Domain": {
+       "CellSize": 2.5,
+       "TimeStep": 0.125,
+       "NumberOfLayers": 1,
+       "LayerOffset": 0
+   },
+   "Nucleation": {
+      "Density": 50,
+      "MeanUndercooling": 1,
+      "StDev": 0.5
+   },
+   "TemperatureData": {
+       "LayerwiseTempRead": false,
+       "TemperatureFiles": ["/mnt/d/d_drive/python_all/foam_vtk_convert/hpc_final_v3/All_results/output_case_008_remapped.csv"] 
+       
+   },
+   "Substrate": {
+      "MeanBaseplateGrainSize": 20,
+      "MeanPowderGrainSize": 20
+   },
+   "Printing": {
+      "PathToOutput": "./",
+      "OutputFile": "TestProblemSingleLine",
+      "PrintBinary": false,
+      "PrintExaConstitSize": 0,
+      "Interlayer": {
+          "Fields": ["GrainID", "LayerID", "GrainMisorientation"]
+      }
+   }
+}

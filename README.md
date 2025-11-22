@@ -1,332 +1,214 @@
-# `laserbeamFoam` solvers
+# Process–Microstructure Coupling in Reduced Gravity Laser Welding
 
-![alt text](https://github.com/micmog/LaserbeamFoam/blob/main/images/Powder.png?raw=true)
+Open-source multiphysics simulation framework for CFD-CA simulation of in-space laser welding.
 
-## Overview
+**Paper:** [arxiv.org/abs/2511.15725](https://arxiv.org/abs/2511.15725)
 
-Presented here is a growing suite of solvers that describe laser-substrate
- interaction. This repository begins with the `laserbeamFoam` solver. Additional
- solvers are being added incrementally.
+![Overview](images/overview.jpg)
 
-Currently, this repository contains two solvers:
+![Workflow](images/workflow.jpg)
 
-### `laserbeamFoam`
+## Authors
 
-A volume-of-fluid (VOF) solver for studying high energy density laser-based
-advanced manufacturing processes and laser-substrate interactions. This
-implementation treats the metallic substrate and shielding gas phase as
-in-compressible. The solver fully captures the metallic substrate's
-fusion/melting state transition. For the vapourisation of the substrate, the
-explicit volumetric dilation due to the vapourisation state transition is
-neglected; instead, a phenomenological recoil pressure term is used to capture
-the contribution to the momentum and energy fields due to vaporisation events.
-laserbeamFoam also captures surface tension effects, the temperature dependence
-of surface tension (Marangoni) effects, latent heat effects due to
-melting/fusion (and vapourisation), buoyancy effects due to the thermal
-expansion of the phases using a Boussinesq approximation, and momentum damping
-due to solidification.
-A ray-tracing algorithm is implemented that permits the incident Gaussian laser
-beam to be discretised into several 'Rays' based on the computational grid
-resolution. The 'Rays' of this incident laser beam are then tracked through the
-domain through their multiple reflections, with the energy deposited by each
-ray determined through the Fresnel equations. The solver approach is extended
-from the adiabatic two-phase interFoam code developed by
-[OpenCFD Ltd.](http://openfoam.com/) to include non-isothermal state transition
-physics and ray-tracing heat source application.
+**Rakibul Islam Kanak**¹, **Taslima Hossain Sanjana**¹, **Apurba Sarker**², **Sourav Saha**²*
 
-### `multiComponentlaserbeamFoam`
+¹ Department of Mechanical Engineering, Bangladesh University of Engineering and Technology (BUET), Dhaka, Bangladesh  
+² Kevin T. Crofton Department of Aerospace and Ocean Engineering, Virginia Polytechnic Institute and State University, Blacksburg, VA 24061, USA
 
-An extension of the laserbeamfoam solver to multi-component metallic
-substrates. This solver can simulate M-Component metallic substrates in the
-presence of gas-phases. Diffusion is treated through a Fickian diffusion model
-with the diffusivity specified through 'diffusion pairs', and the interface
-compression is again specified pair-wise. The miscible phases in the simulation
-should have diffusivity specified between them, and immiscible phase pairs
-should have an interface compression term specified between them (typically 1).
+*Corresponding author: souravsaha@vt.edu
 
-Target applications for the solvers included in this repository include:
+## Prerequisites
 
-* Dissimilar Laser Welding
-* Dissimilar Laser Drilling
-* Dissimilar Laser Powder Bed Fusion
-* Dissimilar Selective Laser Melting
+### 1. OpenFOAM 10
 
-## Installation
-
-The current version of the code utilises the
-[OpenFOAM-10 libraries](https://openfoam.org/version/10/). A branch that
-compiles against the older OpenFOAM-6 libraries is provided. The code has been
-developed and tested using an Ubuntu installation but should work on any
-operating system capable of installing OpenFOAM. To install the laserbeamFoam
-solvers, first, install and load
-[OpenFOAM-10](https://openfoam.org/download/10-ubuntu/), then clone and build
-the laserbeamFoam library:
-
+**Local Installation:**
 ```bash
-git clone https://github.com/micmog/laserbeamFoam.git laserbeamFoam
-./Allwmake -j
+# Follow official Ubuntu installation guide
+# https://openfoam.org/download/10-ubuntu/
 ```
 
-where the `-j` option uses all CPU cores available for building.
+**HPC Cluster:**
+- Compile from source: [OpenFOAM 10 Source](https://openfoam.org/download/10-source/)
+- Requirements: GCC 13, OpenMPI 5.0.7
+- Download OpenMPI: [openmpi-5.0.7.tar.bz2](https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.7.tar.bz2)
 
-The installation can be tested using the tutorial cases described below.
+**Build Order:**
+1. Load GCC 13
+2. Compile OpenMPI 5.0.7
+3. Load OpenMPI 5.0.7 + GCC 13
+4. Compile OpenFOAM 10
 
-### Optional: Installation of the LIGGGHTS® Discrete Element Model Solver
+### 2. LaserbeamFoam (Modified)
 
-Some of the tutorial cases use a discrete element method (DEM) solver called
- LIGGGHTS to simulate the creation of a powder bed, e.g. see [this powder bed
- fusion tutorial](tutorials/laserbeamFoam/LPBF_small/README.md).
- For these cases, if available, the `liggghts` executable will be used in the
- case pre-processing process.
+Modified version of [LaserbeamFoam](https://github.com/laserbeamfoam/LaserbeamFoam) with:
+- Temperature-dependent properties
+- Modified recoil pressure for variable ambient pressure
+- Heat loss terms (radiation, convection)
 
-On Linux, LIGGGHTS® can be installed with
-
+**Installation:**
 ```bash
-# Install required dependencies
-sudo apt update
-sudo apt install -y build-essential cmake gfortran git \
-  libfftw3-dev libjpeg-dev libpng-dev libvtk6-dev \
-  libopenmpi-dev openmpi-bin
-  
-# Clone the LIGGGHTS repository
-git clone https://github.com/CFDEMproject/LIGGGHTS-PUBLIC.git
-cd LIGGGHTS-PUBLIC/src
-
-# Compile
-make auto
-
-# The `liggghts` executable should now be available in this directory
+# Load: GCC 13, OpenFOAM 10, OpenMPI 5.0.7
+./Allwmake
 ```
 
-While on macOS, LIGGGHTS® can be installed with
+### 3. ExaCA
 
-```bash
-# Install required dependencies using Homebrew
-brew install cmake gcc openmpi vtk
-  
-# Clone the LIGGGHTS repository
-git clone https://github.com/CFDEMproject/LIGGGHTS-PUBLIC.git
+Follow installation guide: [ExaCA GitHub](https://github.com/LLNL/ExaCA)
 
-# Compile
-# You may need to update the vtk version in the cmake command to the version
-# installed on your system (i.e., replace 9.4.2_1 with another version)
-cd LIGGGHTS-PUBLIC
-mkdir build
-cd build
-cmake ../src -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx -DVTK_DIR=/opt/homebrew/Cellar/vtk/9.4.2_1/lib/cmake/vtk-9.4
-make
+### 4. ParaView 5.13
 
-# The `liggghts` executable should now be available in this directory
+Download from: [paraview.org/download](https://www.paraview.org/download/)
+
+## Running CFD Simulations
+
+### Parametric Study Setup
+
+1. **Configure template path** in script:
+```python
+TEMPLATE_PATH = "/path/to/your/template/case"
 ```
 
-For convenience, you can add add `liggghts` to your PATH (e.g. in `~/.bashrc`):
-
+2. **Generate example CSV files:**
 ```bash
-export PATH="~/LIGGGHTS-PUBLIC/build:$PATH"
+python3 script.py --create-examples
 ```
 
-where the location should be updated to match the location on your system.
-
-## Tutorial Cases
-
-The tutorial cases can be run with the included `Allrun` scripts, i.e.
-
+3. **Run simulations:**
 ```bash
-./Allrun
+# Generate cases only
+python3 script.py --csv parameters.csv --output my_cases
+
+# Generate and submit to SLURM
+python3 script.py --csv parameters.csv --output my_cases --submit
 ```
 
-The `Allrun` script prepares the mesh and fields, and runs the solver. Typically
- the following steps are performed:
+### CSV Parameters
 
-```bash
-# Create the 0 directory
-cp -r initial 0
+**Laser:** `laser_radius`, `laser_e_num_density`, `laser_radius_flavour`, `powder_sim`  
+**Phase:** `phase_sigma`, `phase_dsigmadT`, `phase_p_amb`, `phase_Tvap`, `phase_beta_r`  
+**Gas:** `gas_nu`, `gas_rho`, `gas_beta`, `gas_poly_kappa`, `gas_poly_cp`  
+**Metal:** `metal_elec_resistivity`, `metal_emissivity`, `metal_T_ambient`, `metal_h_convection`  
+**Mesh:** `mesh_width`, `mesh_track_length`, `mesh_patching_height`, `mesh_size`  
+**Time:** `time_total_time`, `time_scan_speed`, `time_laser_power`, `time_initial_pos`  
+**Gravity:** `gravity_y`
 
-# Create the mesh
-blockMesh
+### Example CSV
 
-# Set the initial fields
-setFields
-
-# Run the solver in serial
-laserbeamFoam
-
-# Or run the solver in parallel, e.g. on 6 cores
-#decomposePar
-#mpirun -np 6 laserbeamFoam -parallel &> log.laserbeamFoam
+**Minimal:**
+```csv
+time_laser_power,mesh_size
+400,8e-6
+500,10e-6
 ```
 
-Cases can be cleaned and reset using the included `Allclean` scripts, i.e.
-
-```bash
-./Allclean
+**Full parameters:**
+```csv
+laser_radius,time_laser_power,mesh_size,time_scan_speed
+40e-6,400,8e-6,0.8
+50e-6,500,10e-6,0.7
 ```
 
-### 2D Plate
+## Post-Processing for CA Simulation
 
-In these cases, the penetration rate of an incident laser source is investigated
- based on the angle of incidence of the laser beam. Two cases are presented
- where the beam is perpendicular to the substrate or 45 degrees to the initial
- plate normal.
+### Export Thermal History Data
 
-### 3D Plate
+1. **Configure paths** in `generate_ca_file_job.sh`:
+```bash
+VENV_PATH="$HOME/venv312/bin/activate"
+PARAVIEW_PATH="/path/to/ParaView-5.13.3-MPI-Linux-Python3.10-x86_64/bin/pvpython"
+```
 
-In this case, the two-dimensional 45-degree example is extended to three dimensions.
+2. **Select cases to process:**
+```bash
+SELECTED_CASES=("case_000_cond" "case_001_cond" "case_002_cond")
+```
 
-### 2D Circular Particles
+3. **Run VTK pipeline:**
+```bash
+./generate_ca_file_job.sh
+```
 
-In this example, a series of circular metallic regions are seeded on top of a
- planar substrate. The laser heat source traverses the domain and melts these
- regions, and their topology evolves accordingly.
+**Output:** Thermal history CSV files in `All_results/` folder containing x, y, z coordinates with tm, ts, cr data.
 
-### 2D Laser-Powder Bed Fusion
+## ExaCA Simulation
 
-In this example, a two-dimensional domain is seeded with many small powder
- particles with a complex size distribution, representative of that observed in
- the L-PBF manufacturing process. The laser heat source traverses the domain, and
- some particles melt and re-solidify in the heat source's wake.
+### Configuration
 
-## Algorithm
+Edit `ca_files/Inp_SingleLine.json`:
 
-Initially, the solver loads the mesh, reads in fields and boundary conditions,
- and selects the turbulence model (if specified). The main solver loop is then
- initiated. First, the time step is dynamically modified to ensure numerical
- stability. Next, the two-phase fluid mixture properties and turbulence
- quantities are updated. The discretised phase-fraction equation is then solved
- for a user-defined number of subtime steps (typically 3) using the
- multidimensional universal limiter with explicit solution solver [MULES](https://openfoam.org/release/2-3-0/multiphase/).
- This solver is included in the OpenFOAM library and performs conservative
- solutions of hyperbolic convective transport equations with defined bounds (0
- and 1 for $α_1$). Once the updated phase field is obtained, the program enters
- the pressure–velocity loop, where p and u are corrected alternatingly. $T$ is
- also solved in this loop so that the buoyancy predictions are correct for the
- $U$ and $p$ fields. Correcting the pressure and velocity fields in the sequence
- is known as pressure implicit with the splitting of operators (PISO). In the
- OpenFOAM environment, PISO is repeated for multiple iterations at each time
- step. This process is called the merged PISO- semi-implicit method for
- pressure-linked equations (SIMPLE) or the pressure-velocity loop (PIMPLE)
- process, where SIMPLE is an iterative pressure–velocity solution algorithm.
- PIMPLE continues for a user-specified number of iterations.
+```json
+{
+  "MaterialFileName": "/path/to/ExaCA/examples/Materials/Al6061.json",
+  "TemperatureFiles": ["/path/to/All_results/output_case_008_remapped.csv"]
+}
+```
 
-The main solver loop iterates until program termination. A summary of the
- simulation algorithm is presented below:
+### Execution
 
-* `laserbeamFoam` Simulation Algorithm Summary:
+```bash
+mpiexec -n 1 ExaCA Inp_SingleLine.json
+```
 
-  * Initialise simulation data and mesh
+**Output:** JSON file, grain ID VTK file, misorientation VTK file
 
-  * WHILE $t < t_{\text{end}}$ DO
+## Grain Analysis
 
-    1. Update $\Delta t$ for stability
+Use output files with ExaCA grain analysis tools:  
+[ExaCA Analysis Documentation](https://github.com/LLNL/ExaCA/tree/master/analysis)
 
-    2. Phase equation sub-cycle
+## Citation
 
-    3. Update interface location for the heat source application
+If you use this framework, please cite:
+```
+[Citation details from arxiv.org/abs/2511.15725]
+```
 
-    4. Update fluid properties
+## Acknowledgments
 
-    5. Ray-tracing for Heat Source application at the surface
+This framework builds upon the excellent work of:
 
-    6. PISO Loop
+- **LaserbeamFoam**: Original solver developed by the LaserbeamFoam team  
+  Repository: [github.com/laserbeamfoam/LaserbeamFoam](https://github.com/laserbeamfoam/LaserbeamFoam)
 
-        1. Form $U$ equation
+- **ExaCA**: Exascale Cellular Automata developed by Lawrence Livermore National Laboratory  
+  Repository: [github.com/LLNL/ExaCA](https://github.com/LLNL/ExaCA)  
+  Authors: M.J. Rolchigo, J. Coleman, et al.
 
-        2. Energy Transport Loop
-
-            1. Solve $T$ equation  
-            2. Update fluid fraction field  
-            3. Re-evaluate source terms due to latent heat
-
-        3. PISO
-
-            1. Obtain and correct face fluxes  
-            2. Solve $p$ Poisson equation  
-            3. Correct $U$
-
-    7. Write fields
-
-There are no constraints on how the computational domain is discretised.
-
-## Visualising the rays in ParaView
-
-`laserbeamFoam` writes the individual ray beams to `VTK/rays_<TIME_INDEX>.vtk`,
- where `<TIME_INDEX>` is the time-step index, i.e. 1, 2, 3, etc. ParaView
- recognises that these files are in a sequence, so they can all be loaded
- together: `File` -> `Open...` -> Select `rays_..vtk`. As the VTK files do not
- store time-step information, by default, ParaView assumes the time-step size
- for the rays is 1 s; however, you can use the ParaView “Temporal Shift Scale”
- filter on the rays object to sync the ray time with the OpenFOAM model time,
- where the OpenFOAM time-step value (e.g. 1e-5) is used as the `Scale`.
+We gratefully acknowledge their contributions to the open-source community.
 
 ## License
 
-OpenFOAM, and by extension, the `laserbeamFoam` application, is licensed free
- and open source only under the [GNU General Public Licence version 3](https://www.gnu.org/licenses/gpl-3.0.en.html).
- One reason for OpenFOAM’s popularity is that its users are granted the freedom
- to modify and redistribute the software and have a right to continued free use
- within the terms of the GPL.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgements
+```
+MIT License
 
-Tom Flint and Joe Robson thank the EPSRC for financial support through the
- associated programme grant LightFORM (EP/R001715/1). Joe Robson thanks the
- Royal Academy of Engineering/DSTL for funding through the RAEng/DSTL Chair in
- Alloys for Extreme Environments.
+Copyright (c) 2024 Rakibul Islam Kanak, Taslima Hossain Sanjana, Apurba Sarker, Sourav Saha
+BUET (Bangladesh) & Virginia Tech (USA)
 
-Philip Cardiff and Gowthaman Parivendhan authors gratefully acknowledge financial
- support from I-Form, funded by Science Foundation Ireland (SFI) Grant Numbers
- 16/RC/3872 and 21/RC/10295 P2, co-funded under the European Regional Development
- Fund and by I-Form industry partners. In addition, Philip Cardiff received
- funding from the European Research Council (ERC) under the European Union’s
- Horizon 2020 research and innovation programme (Grant Agreement No. 101088740),
- and acknowledges financial support from the Irish Research Council through the
- Laureate programme, grant number IRCLA/2017/45, and Bekaert, through the Bekaert
- University Technology Centre (UTC) at University College Dublin
- [www.ucd.ie/bekaert](www.ucd.ie/bekaert).
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-## Citing This Work
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-If you use `laserbeamFoam` in your work. Please use the following to cite our work:
-
-```bibtex
-laserbeamFoam: Laser ray-tracing and thermally induced state transition
-simulation toolkit. TF Flint, JD Robson, G Parivendhan, P Cardiff - SoftwareX,
-2023 - https://doi.org/10.1016/j.softx.2022.101299
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
-## References
+**Note:** This project integrates multiple open-source components. Please refer to the original licenses of LaserbeamFoam, ExaCA, and OpenFOAM for their respective terms.
 
-Flint, T. F., Robson, J. D., Parivendhan, G., & Cardiff, P. (2023).
- laserbeamFoam: Laser ray-tracing and thermally induced state transition
- simulation toolkit. SoftwareX, 21, 101299.
+## Contact
 
-Flint, T. F., Parivendhan, G., Ivankovic, A., Smith, M. C., & Cardiff, P. (2022).
- beamWeldFoam: Numerical simulation of high energy density fusion and
- vapourisation-inducing processes. SoftwareX, 18, 101065.
-
-Flint, T. F., et al. A fundamental analysis of factors affecting chemical
- homogeneity in the laser powder bed fusion process. International Journal of
- Heat and Mass Transfer 194 (2022): 122985.
-
-Flint, T. F., T. Dutilleul, and W. Kyffin. A fundamental investigation into the
- role of beam focal point, and beam divergence, on thermo-capillary stability
- and evolution in electron beam welding applications. International Journal of
- Heat and Mass Transfer 212 (2023): 124262.
-
-Parivendhan, G., Cardiff, P., Flint, T., Tuković, Ž., Obeidi, M., Brabazon, D.,
- Ivanković, A. (2023) A numerical study of processing parameters and their
- effect on the melt-track profile in Laser Powder Bed Fusion processes, Additive
- Manufacturing, 67, 10.1016/j.addma.2023.103482.
-
-## Disclaimer
-
-This offering is not approved or endorsed by OpenCFD Limited, producer and
- distributor of the OpenFOAM software via [www.openfoam.com](https://www.openfoam.com),
- and owner of the OPENFOAM® and OpenCFD® trade marks.
-
-## Acknowledgement
-
-OPENFOAM® is a registered trademark of OpenCFD Limited, producer and distributor
- of the OpenFOAM software via [www.openfoam.com](https://www.openfoam.com).
-
-![visitors](https://visitor-badge.deta.dev/badge?page_id=micmog.LaserbeamFoam)
+For questions, issues, or contributions:
+- Open an issue on [GitHub Issues](https://github.com/[your-repo]/issues)
+- Email: souravsaha@vt.edu (Corresponding Author) or rakibul.buet19@gmail.com
