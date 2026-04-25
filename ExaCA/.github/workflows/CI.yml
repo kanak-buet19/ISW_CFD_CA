@@ -1,0 +1,297 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+concurrency:
+  group: ${ {github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{github.event_name == 'pull_request'}}
+jobs:
+  CI:
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Fix for "Read -1, expected xxx errno = 1" https://github.com/open-mpi/ompi/issues/4948#issuecomment-395468231
+      OMPI_MCA_btl_vader_single_copy_mechanism: "none"
+    strategy:
+      matrix:
+        distro: ['ubuntu:latest']
+        cxx: ['g++', 'clang++']
+        backend: ['SERIAL', 'OPENMP']
+        cmake_build_type: ['Debug', 'Release']
+        kokkos_ver: ['4.0.01']
+        json: ['External']
+        heat_transfer: ['None']
+        include:
+          - distro: 'ubuntu:intel'
+            cxx: 'icpx'
+            backend: 'SERIAL'
+            cmake_build_type: 'Release'
+            kokkos_ver: '4.0.01'
+            json: External
+            heat_transfer: 'None'
+          - distro: 'ubuntu:intel'
+            cxx: 'icpx'
+            backend: 'OPENMP'
+            cmake_build_type: 'Release'
+            kokkos_ver: '4.0.01'
+            json: External
+            heat_transfer: 'None'
+          - distro: 'ubuntu:latest'
+            cxx: 'g++'
+            backend: 'SERIAL'
+            cmake_build_type: 'Debug'
+            kokkos_ver: '4.0.01'
+            json: Internal
+            heat_transfer: 'None'
+          - distro: 'ubuntu:latest'
+            cxx: 'g++'
+            backend: 'THREADS'
+            cmake_build_type: 'Debug'
+            kokkos_ver: '4.0.01'
+            json: External
+            heat_transfer: 'None'
+          - distro: 'ubuntu:latest'
+            cxx: 'g++'
+            backend: 'SERIAL'
+            cmake_build_type: 'Release'
+            kokkos_ver: '4.0.01'
+            json: External
+            heat_transfer: 'Finch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: ghcr.io/ecp-copa/ci-containers/${{ matrix.distro }}
+    continue-on-error: ${{ matrix.distro == 'ubuntu:intel' }}
+    steps:
+      - name: Checkout json
+        if: ${{ matrix.json == 'External' }}
+        uses: actions/checkout@v3
+        with:
+          repository: nlohmann/json
+          ref: v3.11.2
+          path: json
+      - name: Build json
+        if: ${{ matrix.json == 'External' }}
+        working-directory: json
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/json \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -DJSON_BuildTests=OFF
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout kokkos
+        uses: actions/checkout@v3
+        with:
+          repository: kokkos/kokkos
+          ref: ${{ matrix.kokkos_ver }}
+          path: kokkos
+      - name: Build kokkos
+        working-directory: kokkos
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/kokkos \
+            -DKokkos_ENABLE_${{ matrix.backend }}=ON \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DKokkos_ENABLE_HWLOC=ON \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }}
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout Cabana
+        if: ${{ matrix.heat_transfer == 'Finch' }}
+        uses: actions/checkout@v3
+        with:
+          repository: ECP-CoPA/Cabana
+          ref: 0.6.1
+          path: cabana
+      - name: Build Cabana
+        if: ${{ matrix.heat_transfer == 'Finch' }}
+        working-directory: cabana
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -DCMAKE_INSTALL_PREFIX=$HOME/cabana \
+            -DCMAKE_PREFIX_PATH="$HOME/kokkos" \
+            -DCabana_ENABLE_GRID=ON
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout Finch
+        if: ${{ matrix.heat_transfer == 'Finch' }}
+        uses: actions/checkout@v3
+        with:
+          repository: ORNL-MDF/Finch
+          # This is after the ability to extract data bounds with an input MPI comm was added
+          ref: 928d56776550e1a546a93197f713fc4d7e1a618d
+          path: finch
+      - name: Build Finch
+        if: ${{ matrix.heat_transfer == 'Finch' }}
+        working-directory: finch
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/finch \
+            -DCMAKE_PREFIX_PATH="$HOME/cabana" \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }}
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout ExaCA
+        uses: actions/checkout@v3
+      - name: Build ExaCA
+        run: |
+          cmake -B build \
+            -D CMAKE_INSTALL_PREFIX=$HOME/exaca \
+            -D CMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/json;$HOME/finch" \
+            -D CMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -D CMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror" \
+            -D MPIEXEC_MAX_NUMPROCS=2 \
+            -D MPIEXEC_PREFLAGS="--oversubscribe" \
+            -D ExaCA_ENABLE_TESTING=ON \
+            ${exaca_cmake_opts[@]}
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Unit test ExaCA
+        run: |
+          CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
+      - name: Test ExaCA
+        working-directory: examples
+        run: |
+          $HOME/exaca/bin/ExaCA Inp_SmallDirSolidification.json
+          $HOME/exaca/bin/ExaCA Inp_SmallSpotMelt.json
+          mpirun -n 2 --oversubscribe $HOME/exaca/bin/ExaCA Inp_SmallDirSolidification.json
+          mpirun -n 2 --oversubscribe $HOME/exaca/bin/ExaCA Inp_SmallSpotMelt.json
+      - name: Test GA
+        working-directory: analysis/examples
+        run: |
+           $HOME/exaca/bin/ExaCA ../../examples/Inp_SmallDirSolidification.json
+           $HOME/exaca/bin/ExaCA-GrainAnalysis AnalyzeSmallDirS.json TestProblemSmallDirS
+      - name: Test Finch-ExaCA
+        if: ${{ matrix.heat_transfer == 'Finch' }}
+        working-directory: utilities/Finch
+        run: |
+          $HOME/exaca/bin/Finch-ExaCA inputs_small.json ../../examples/Inp_SmallFinch.json
+
+  HIP:
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Needed because FindMPI relies heavily on the compiler wrappers, which aren't used with hipcc
+      MPI_LOCATION: /usr/lib/x86_64-linux-gnu/openmpi/
+    strategy:
+      matrix:
+        cxx: ['hipcc']
+        cmake_build_type: ['Release']
+        # Using >4.0 because of kokkos build error without available device
+        kokkos_ver: ['4.2.00']
+    runs-on: ubuntu-latest
+    container: ghcr.io/ecp-copa/ci-containers/rocm:latest
+    steps:
+      - name: Checkout json
+        uses: actions/checkout@v3
+        with:
+          repository: nlohmann/json
+          ref: v3.11.2
+          path: json
+      - name: Build json
+        working-directory: json
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/json \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -DJSON_BuildTests=OFF
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout kokkos
+        uses: actions/checkout@v3
+        with:
+          repository: kokkos/kokkos
+          ref: ${{ matrix.kokkos_ver }}
+          path: kokkos
+      - name: Build kokkos
+        working-directory: kokkos
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/kokkos \
+            -DKokkos_ENABLE_HIP=ON \
+            -DKokkos_ARCH_VEGA908=ON \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout ExaCA
+        uses: actions/checkout@v3
+      - name: Build ExaCA
+        run: |
+          cmake -B build \
+            -D CMAKE_INSTALL_PREFIX=$HOME/exaca \
+            -D CMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/json" \
+            -D CMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -D CMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror -I${MPI_LOCATION}/include" \
+            -D CMAKE_EXE_LINKER_FLAGS="-L${MPI_LOCATION}/lib -lmpi" \
+            -D CMAKE_SHARED_LINKER_FLAGS="-L${MPI_LOCATION}/lib -lmpi" \
+            -D ExaCA_ENABLE_TESTING=ON
+          cmake --build build --parallel 2
+          cmake --install build
+
+  CUDA:
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        cxx: ['nvcc']
+        cmake_build_type: ['Release']
+        kokkos_ver: ['4.0.01']
+    runs-on: ubuntu-latest
+    container: ghcr.io/ecp-copa/ci-containers/cuda:12.2.0
+    steps:
+      - name: Checkout json
+        uses: actions/checkout@v3
+        with:
+          repository: nlohmann/json
+          ref: v3.11.2
+          path: json
+      - name: Build json
+        working-directory: json
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/json \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -DJSON_BuildTests=OFF
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout kokkos
+        uses: actions/checkout@v3
+        with:
+          repository: kokkos/kokkos
+          ref: ${{ matrix.kokkos_ver }}
+          path: kokkos
+      - name: Build kokkos
+        working-directory: kokkos
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/kokkos \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -DKokkos_ENABLE_CUDA=ON \
+            -DKokkos_ARCH_VOLTA72=ON \
+            -DKokkos_ENABLE_CUDA_LAMBDA=ON
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout ExaCA
+        uses: actions/checkout@v3
+      - name: Build ExaCA
+        run: |
+          cmake -B build \
+            -D CMAKE_INSTALL_PREFIX=$HOME/exaca \
+            -D CMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/json" \
+            -D CMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror" \
+            -D ExaCA_ENABLE_TESTING=ON
+          cmake --build build --parallel 2
+          cmake --install build

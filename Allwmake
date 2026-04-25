@@ -36,7 +36,7 @@ then
     exit 1
 else
     echo
-    echo "There were no build errors: enjoy laserbeamFoam!"; echo
+    echo "There were no build errors: enjoy laserbeamfoam_ISW!"; echo
 fi
 echo
 

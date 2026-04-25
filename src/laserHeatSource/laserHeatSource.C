@@ -305,18 +305,73 @@ void laserHeatSource::updateDeposition
 
     forAll(laserNames_, laserI)
     {
+        // Dict for current laser
+        const dictionary& dict = laserDicts_[laserI];
+
         // Lookup the current laser position and power
         vector currentLaserPosition =
             timeVsLaserPosition_[laserI](time);
-        const scalar currentLaserPower =
-            timeVsLaserPower_[laserI](time);
+        scalar currentLaserPower = timeVsLaserPower_[laserI](time);
+
+        if (dict.lookupOrDefault<Switch>("pulseLaser", false))
+        {
+            const scalar pulseFrequency
+            (
+                readScalar(dict.lookup("pulseFrequency"))
+            );
+            const scalar pulseDuration
+            (
+                readScalar(dict.lookup("pulseDuration"))
+            );
+            const scalar pulseStart
+            (
+                dict.lookupOrDefault<scalar>("pulseStart", 0.0)
+            );
+            const scalar pulseEnd
+            (
+                dict.lookupOrDefault<scalar>("pulseEnd", GREAT)
+            );
+            const scalar pulseOffPower
+            (
+                dict.lookupOrDefault<scalar>("pulseOffPower", 0.0)
+            );
+
+            if (pulseFrequency <= SMALL)
+            {
+                FatalErrorInFunction
+                    << "pulseFrequency must be greater than zero"
+                    << exit(FatalError);
+            }
+
+            const scalar pulsePeriod = 1.0/pulseFrequency;
+
+            if (pulseDuration < 0.0 || pulseDuration > pulsePeriod)
+            {
+                FatalErrorInFunction
+                    << "pulseDuration must be between 0 and the pulse period "
+                    << pulsePeriod << " s"
+                    << exit(FatalError);
+            }
+
+            if (time < pulseStart || time > pulseEnd)
+            {
+                currentLaserPower = pulseOffPower;
+            }
+            else
+            {
+                const scalar pulseTime =
+                    fmod(time - pulseStart, pulsePeriod);
+
+                if (pulseTime >= pulseDuration)
+                {
+                    currentLaserPower = pulseOffPower;
+                }
+            }
+        }
 
         Info<< "Laser " << laserNames_[laserI] << nl
             << "Laser mean position = " << currentLaserPosition << nl
             << "Laser power = " << currentLaserPower << endl;
-
-        // Dict for current laser
-        const dictionary& dict = laserDicts_[laserI];
 
         // If defined, add oscillation to laser position
         if (dict.found("HS_oscAmpX"))

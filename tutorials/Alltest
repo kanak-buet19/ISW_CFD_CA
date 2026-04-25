@@ -229,8 +229,8 @@ find . -name "log.*" -exec cat {} \; >> logs
 
 # Output summary statistics
 echo; echo "Summary statistics"
-N_RUN_CASES=$(grep "laserbeamFoam" ../tutorialsTest/testLoopReport | wc -l)
-N_FAILED_SOLVER=$(grep "ERROR" testLoopReport | grep "laserbeamFoam" | wc -l)
+N_RUN_CASES=$(grep "laserbeamFoam_ISW" ../tutorialsTest/testLoopReport | wc -l)
+N_FAILED_SOLVER=$(grep "ERROR" testLoopReport | grep "laserbeamFoam_ISW" | wc -l)
 N_FAILED_COMMANDS=$(grep "ERROR" testLoopReport | wc -l)
 N_FAILED_OTHER=$((N_FAILED_COMMANDS-N_FAILED_SOLVER))
 echo "    Number of cases where a run was attempted: ${N_RUN_CASES}"
@@ -243,7 +243,7 @@ then
     if [[ $N_FAILED_SOLVER -gt 0 ]]
     then
         echo "The solver failed in the following cases:"
-        grep "ERROR" testLoopReport | grep "laserbeamFoam"
+        grep "ERROR" testLoopReport | grep "laserbeamFoam_ISW"
         echo
     fi
     if [[ $N_FAILED_OTHER -gt 0 ]]
@@ -254,6 +254,6 @@ then
     fi
     exit 1
 else
-    echo "All tests passed: enjoy the laserbeamFoam solvers!"
+    echo "All tests passed: enjoy the laserbeamFoam_ISW solvers!"
 fi
 echo

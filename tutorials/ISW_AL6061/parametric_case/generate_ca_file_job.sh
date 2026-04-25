@@ -23,7 +23,7 @@ echo ""
 # ─── CONFIG ───────────────────────────────────────────────────────────────
 ROOT_DIR="$(pwd)"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
-CASES_DIR="$ROOT_DIR/cases_old"
+CASES_DIR="/home/kanak/ISW_CFD_CA/tutorials/ISW_AL6061/parametric_case/cases"
 RESULTS_DIR="$ROOT_DIR/All_results"
 
 # IMPORTANT: Update these paths for your HPC environment
@@ -41,7 +41,7 @@ mkdir -p "$RESULTS_DIR"
 
 # ─── HARDCODED CASE LIST ──────────────────────────────────────────────────
 # Specify which cases to run (leave empty to run all cases)
-SELECTED_CASES=("case_000_cond" "case_001_cond" "case_002_cond" "case_003_cond")  # Example: ("case_001" "case_005" "case_010")
+SELECTED_CASES=("case_000")  # Example: ("case_001" "case_005" "case_010")
 # ────────────────────────────────────────────────────────────────────────────
 
 echo "==============================="

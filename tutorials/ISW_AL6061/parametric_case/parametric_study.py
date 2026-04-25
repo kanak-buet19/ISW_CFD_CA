@@ -4,7 +4,7 @@ OpenFOAM Parametric Study Automation
 Generates and submits multiple cases with varying parameters
 """
 #make sure to change this path to the template folder
-TEMPLATE_PATH = "/users/PNS0496/kanakbuet19/CFD/AL6061_trial/AL6061_trial"
+TEMPLATE_PATH = "/home/kanak/ISW_CFD_CA/tutorials/ISW_AL6061/AL6061_base"
 
 import os
 import shutil
@@ -570,7 +570,7 @@ dos2unix recon_test
 MONITOR_PID=$!
 
 # Run simulation
-mpirun -np $SLURM_NTASKS laserbeamFoam -parallel
+mpirun -np $SLURM_NTASKS laserbeamFoam_ISW -parallel
 
 # Final reconstruction
 reconstructPar

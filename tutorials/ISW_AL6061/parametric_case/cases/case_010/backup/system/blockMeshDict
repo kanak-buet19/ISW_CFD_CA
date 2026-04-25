@@ -1,0 +1,83 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+convertToMeters 1.0;
+
+vertices
+(
+    (0          0         0)        // 0
+    (0.25e-3    0         0)        // 1
+    (0.25e-3    1.0e-3    0)        // 2
+    (0          1.0e-3    0)        // 3
+    (0          0         0.15e-3)  // 4
+    (0.25e-3    0         0.15e-3)  // 5
+    (0.25e-3    1.0e-3    0.15e-3)  // 6
+    (0          1.0e-3    0.15e-3)  // 7
+);
+
+blocks
+(
+    // ≈6 µm resolution:
+    //  0.25 mm / 42  ≃ 5.95 µm
+    //  1.00 mm / 168 ≃ 5.95 µm
+    //  0.15 mm / 25  = 6.00 µm
+    hex (0 1 2 3 4 5 6 7) (42 168 25) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    back
+    {
+        type patch;
+        faces ((0 4 7 3));
+    }
+    front
+    {
+        type patch;
+        faces ((1 2 6 5));
+    }
+    leftWall
+    {
+        type patch;
+        faces ((0 1 5 4));
+    }
+    rightWall
+    {
+        type patch;
+        faces ((3 7 6 2));
+    }
+    topWall
+    {
+        type patch;
+        faces ((4 5 6 7));
+    }
+    bottomWall
+    {
+        type wall;
+        faces ((0 3 2 1));
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //
+

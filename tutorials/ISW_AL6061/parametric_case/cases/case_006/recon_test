@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# recon_monitor - Continuously monitor simulation and process new timesteps
+# Usage: ./recon_monitor.sh
+
+set -e
+
+# Configuration
+OUTPUT_DIR="testing"
+CHECK_INTERVAL=60
+LOG_FILE="${OUTPUT_DIR}/monitor_$(date +"%Y%m%d_%H%M%S").log"
+
+# Colors
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+
+print_status()   { echo -e "${BLUE}[$(date +"%H:%M:%S")]${NC} $1" | tee -a "$LOG_FILE"; }
+print_success()  { echo -e "${GREEN}✓${NC} $1" | tee -a "$LOG_FILE"; }
+print_error()    { echo -e "${RED}✗${NC} $1" | tee -a "$LOG_FILE"; }
+print_warning()  { echo -e "${YELLOW}⚠${NC} $1" | tee -a "$LOG_FILE"; }
+
+# Get latest time function (handles decimals + scientific notation)
+get_latest_time() {
+    find processor0/ -maxdepth 1 -type d 2>/dev/null | \
+    grep -E '/[0-9]*\.?[0-9]*([eE][+-]?[0-9]+)?$' | \
+    sed 's/.*\///' | \
+    sort -g | tail -1 2>/dev/null || echo ""
+}
+
+# Process timestep function
+process_timestep() {
+    local time=$1
+    
+    # Reconstruct
+    print_status "Reconstructing..."
+    if ! reconstructPar -latestTime -fields '(alpha.metal)' &>> "$LOG_FILE"; then
+        return 1
+    fi
+    print_success "Reconstruction completed"
+    
+    # Convert to VTK
+    print_status "Converting to VTK..."
+    if ! foamToVTK -latestTime &>> "$LOG_FILE"; then
+        return 1
+    fi
+    print_success "VTK conversion completed"
+    
+    # Move VTK files
+    if [ -d "VTK" ]; then
+        vtk_output="$OUTPUT_DIR/vtk_time_$time"
+        mkdir -p "$vtk_output"
+        cp -r VTK/* "$vtk_output/" 2>/dev/null
+        cp -r VTK/* "$OUTPUT_DIR/vtk/" 2>/dev/null
+        rm -rf VTK
+        print_success "VTK saved to: $vtk_output"
+        
+        # Run keyhole analysis
+        vtk_file=$(find "$vtk_output" -name "*.vtk" | head -1 2>/dev/null)
+        if [ -n "$vtk_file" ] && [ -f "analyze_keyhole.py" ]; then
+            print_status "Running keyhole analysis..."
+            
+            unset PYTHONPATH
+            source "$HOME/venv312/bin/activate"
+            
+            if python3 analyze_keyhole.py "$vtk_file" &>> "$LOG_FILE"; then
+                print_success "Keyhole analysis completed"
+            else
+                print_error "Keyhole analysis failed"
+            fi
+            
+            deactivate
+        fi
+    fi
+    
+    # Cleanup
+    [ -d "$time" ] && [ "$time" != "0" ] && rm -rf "$time"
+    
+    return 0
+}
+
+# Validation
+if [ ! -d "system" ] || [ ! -d "constant" ]; then
+    print_error "Not in OpenFOAM case directory!"
+    exit 1
+fi
+
+processor_count=$(ls -d processor* 2>/dev/null | wc -l)
+if [ $processor_count -eq 0 ]; then
+    print_error "No processor directories found!"
+    exit 1
+fi
+
+# Setup
+mkdir -p "$OUTPUT_DIR/vtk" "$OUTPUT_DIR/logs"
+print_status "Starting continuous monitoring (Ctrl+C to stop)"
+print_status "Processors: $processor_count | Check interval: ${CHECK_INTERVAL}s"
+
+last_processed=""
+
+# Main monitoring loop
+while true; do
+    current_time=$(get_latest_time)
+    
+    if [ -z "$current_time" ]; then
+        print_warning "No timesteps found, waiting..."
+        sleep $CHECK_INTERVAL
+        continue
+    fi
+    
+    # Wait for new timestep
+    while [ "$current_time" = "$last_processed" ]; do
+        print_status "Waiting for new timestep (current: $current_time)..."
+        sleep $CHECK_INTERVAL
+        current_time=$(get_latest_time)
+    done
+    
+    # Process new timestep
+    print_status "Processing new timestep: $current_time"
+    
+    if process_timestep "$current_time"; then
+        last_processed="$current_time"
+        print_success "Timestep $current_time completed"
+    else
+        print_error "Failed to process timestep $current_time"
+    fi
+done

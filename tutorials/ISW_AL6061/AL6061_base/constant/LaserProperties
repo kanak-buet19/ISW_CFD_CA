@@ -29,6 +29,15 @@ timeVsLaserPower
     outOfBounds clamp;
 }
 
+// Optional square pulse gate for pulsed LBW. When enabled, the value from
+// timeVsLaserPower is treated as the on-pulse power.
+// pulseLaser true;
+// pulseFrequency 10;       // Hz
+// pulseDuration 0.0071;    // s
+// pulseStart 0;            // s
+// pulseEnd 5;              // s
+// pulseOffPower 0;         // W
+
 laserRadius 50e-6; //356µm diameter
 
 N_sub_divisions	1;

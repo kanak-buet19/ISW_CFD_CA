@@ -52,8 +52,8 @@ decomposePar
 
 dos2unix recon_test
 # Run solver in foreground
-echo "Starting parallel laserbeamFoam simulation with $SLURM_NTASKS cores"
-mpirun -np $SLURM_NTASKS laserbeamFoam -parallel
+echo "Starting parallel laserbeamFoam_ISW simulation with $SLURM_NTASKS cores"
+mpirun -np $SLURM_NTASKS laserbeamFoam_ISW -parallel
 
 # -------------------------
 # Standard reconstruction steps
