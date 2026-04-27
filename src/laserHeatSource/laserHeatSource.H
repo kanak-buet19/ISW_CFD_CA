@@ -97,6 +97,15 @@ class laserHeatSource
         //- List of the time vs laser power interpolation series
         PtrList<interpolationTable<scalar>> timeVsLaserPower_;
 
+        //- Last total laser input power
+        scalar lastInputPower_;
+
+        //- Last total deposited power
+        scalar lastDepositedPower_;
+
+        //- Last position of the first laser
+        vector lastLaserPosition_;
+
 
     // Private Member Functions
 
@@ -131,6 +140,24 @@ public:
         const volScalarField& deposition() const
         {
             return deposition_;
+        }
+
+        //- Last total laser input power
+        scalar lastInputPower() const
+        {
+            return lastInputPower_;
+        }
+
+        //- Last total deposited power
+        scalar lastDepositedPower() const
+        {
+            return lastDepositedPower_;
+        }
+
+        //- Last position of the first laser
+        const vector& lastLaserPosition() const
+        {
+            return lastLaserPosition_;
         }
 
         //- Non-const access to the yDim field

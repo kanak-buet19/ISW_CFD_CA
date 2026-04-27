@@ -90,7 +90,17 @@
 
         fvConstraints.constrain(TEqn);
 
-        TEqn.solve();
+        SolverPerformance<scalar> TPerf = TEqn.solve();
+
+        if (Pstream::master() && residualsLogPtr.valid())
+        {
+            residualsLogPtr()
+                << runTime.value() << ",T,"
+                << TPerf.initialResidual() << ","
+                << TPerf.finalResidual() << ","
+                << TPerf.nIterations()
+                << nl;
+        }
 
         T.relax();
 
@@ -123,6 +133,16 @@
         Info<< "Correcting epsilon1, mean residual = " << meanResidual
             << ", max residual = " << maxResidual
             << endl;
+
+        if (Pstream::master() && residualsLogPtr.valid())
+        {
+            residualsLogPtr()
+                << runTime.value() << ",epsilon1,"
+                << maxResidual << ","
+                << meanResidual << ","
+                << iter
+                << nl;
+        }
     }
     while
     (

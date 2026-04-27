@@ -1,0 +1,7 @@
+plt.scatter(yz["z_um"], yz["y_um"], c=yz["T"], s=8)
+plt.xlabel("Z / scan track (µm)")
+plt.ylabel("Y / depth (µm)")
+plt.colorbar(label="T")
+plt.gca().invert_yaxis()
+plt.axis("equal")
+plt.show()

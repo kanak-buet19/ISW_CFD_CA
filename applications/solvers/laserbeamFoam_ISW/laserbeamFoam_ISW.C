@@ -54,6 +54,7 @@ Authors
 #include "fvcSmooth.H"
 #include "Polynomial.H"
 #include "laserHeatSource.H"
+#include "OFstream.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,6 +85,9 @@ int main(int argc, char *argv[])
     {
         #include "readControls.H"
         #include "readDyMControls.H"
+
+        // Automated track ID calculation
+        label currentTrack = floor(runTime.value() / trackDuration) + 1;
 
         if (LTS)
         {
@@ -218,6 +222,122 @@ int main(int argc, char *argv[])
             mesh.lookupObject<volScalarField>("alpha.metal");
         condition = pos(alphaMetal - 0.5) * pos(epsilon1 - 0.5);
         meltHistory += condition;
+
+        forAll(meltTrackID, celli)
+        {
+            if (condition[celli] > 0.5)
+            {
+                meltTrackID[celli] = currentTrack;
+            }
+        }
+
+        scalar moltenMetalVolume = 0.0;
+
+        forAll(meltTrackID, celli)
+        {
+            if (meltTrackID[celli] > 0.5)
+            {
+                moltenMetalVolume += mesh.V()[celli];
+            }
+        }
+
+        reduce(moltenMetalVolume, sumOp<scalar>());
+
+        Info<< "Molten metal volume from meltTrackID = "
+            << moltenMetalVolume << " m^3" << nl << endl;
+
+        const scalar inputPower = laser.lastInputPower();
+        const scalar depositedPower = laser.lastDepositedPower();
+        const scalar absorptivity =
+            inputPower > SMALL ? depositedPower/inputPower : 0.0;
+
+        const vector laserPosition = laser.lastLaserPosition();
+        const scalar substrateSurfaceY = laserPosition.y();
+        const scalar meanCellVolume =
+            gSum(mesh.V().field())
+           /scalar(returnReduce(mesh.nCells(), sumOp<label>()));
+        const scalar cellLength = Foam::pow(meanCellVolume, 1.0/3.0);
+        const scalar sectionHalfThickness = 1.5*cellLength;
+        const scalar centerHalfWidth = 1.5*cellLength;
+
+        scalar minKeyholeY = GREAT;
+        scalar minMeltPoolY = GREAT;
+        scalar minMeltPoolX = GREAT;
+        scalar maxMeltPoolX = -GREAT;
+
+        forAll(mesh.C(), celli)
+        {
+            const point& c = mesh.C()[celli];
+
+            if
+            (
+                mag(c.z() - laserPosition.z()) <= sectionHalfThickness
+             && c.y() <= substrateSurfaceY
+            )
+            {
+                if
+                (
+                    mag(c.x() - laserPosition.x()) <= centerHalfWidth
+                 && alphaMetal[celli] <= 0.5
+                )
+                {
+                    minKeyholeY = min(minKeyholeY, c.y());
+                }
+
+                if (T[celli] >= TLiquidus[celli])
+                {
+                    minMeltPoolY = min(minMeltPoolY, c.y());
+                    minMeltPoolX = min(minMeltPoolX, c.x());
+                    maxMeltPoolX = max(maxMeltPoolX, c.x());
+                }
+            }
+        }
+
+        reduce(minKeyholeY, minOp<scalar>());
+        reduce(minMeltPoolY, minOp<scalar>());
+        reduce(minMeltPoolX, minOp<scalar>());
+        reduce(maxMeltPoolX, maxOp<scalar>());
+
+        const scalar keyholeDepth =
+            minKeyholeY < GREAT/2 ? substrateSurfaceY - minKeyholeY : 0.0;
+        const scalar meltPoolDepth =
+            minMeltPoolY < GREAT/2 ? substrateSurfaceY - minMeltPoolY : 0.0;
+        const scalar meltPoolWidth =
+            maxMeltPoolX > -GREAT/2 ? maxMeltPoolX - minMeltPoolX : 0.0;
+
+        if (Pstream::master())
+        {
+            if (moltenPoolVolumeLogPtr.valid())
+            {
+                moltenPoolVolumeLogPtr()
+                    << runTime.value() << ","
+                    << moltenMetalVolume
+                    << nl;
+            }
+
+            if (absorptivityLogPtr.valid())
+            {
+                absorptivityLogPtr()
+                    << runTime.value() << ","
+                    << inputPower << ","
+                    << depositedPower << ","
+                    << absorptivity
+                    << nl;
+            }
+
+            if (meltPoolGeometryLogPtr.valid())
+            {
+                meltPoolGeometryLogPtr()
+                    << runTime.value() << ","
+                    << keyholeDepth*1e6 << ","
+                    << meltPoolDepth*1e6 << ","
+                    << meltPoolWidth*1e6 << ","
+                    << laserPosition.x() << ","
+                    << laserPosition.y() << ","
+                    << laserPosition.z()
+                    << nl;
+            }
+        }
 
         runTime.write();
 

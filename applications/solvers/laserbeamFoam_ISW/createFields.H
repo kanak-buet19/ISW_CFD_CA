@@ -3,6 +3,21 @@
 
 const dimensionedScalar deltaN = 1e-8/pow(average(mesh.V()), 1.0/3.0);
 
+// Read track properties from a dedicated file
+IOdictionary trackProperties
+(
+    IOobject
+    (
+        "trackProperties",
+        runTime.constant(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+);
+
+const scalar trackDuration(readScalar(trackProperties.lookup("trackDuration")));
+
 Info<< "Reading field p_rgh\n" << endl;
 volScalarField p_rgh
 (
@@ -740,6 +755,50 @@ incompressibleInterPhaseTransportModel turbulence
 // Create laser heat source
 laserHeatSource laser(mesh);
 
+fileName postProcessingDataDir(runTime.path()/"post-processing-data");
+autoPtr<OFstream> residualsLogPtr;
+autoPtr<OFstream> moltenPoolVolumeLogPtr;
+autoPtr<OFstream> absorptivityLogPtr;
+autoPtr<OFstream> meltPoolGeometryLogPtr;
+
+if (Pstream::master())
+{
+    mkDir(postProcessingDataDir);
+
+    residualsLogPtr.reset
+    (
+        new OFstream(postProcessingDataDir/"residuals.csv")
+    );
+    residualsLogPtr()
+        << "time,field,initialResidual,finalResidual,nIterations"
+        << nl;
+
+    moltenPoolVolumeLogPtr.reset
+    (
+        new OFstream(postProcessingDataDir/"molten_pool_volume.csv")
+    );
+    moltenPoolVolumeLogPtr()
+        << "time,moltenPoolVolume_m3"
+        << nl;
+
+    absorptivityLogPtr.reset
+    (
+        new OFstream(postProcessingDataDir/"absorptivity.csv")
+    );
+    absorptivityLogPtr()
+        << "time,inputPower_W,depositedPower_W,absorptivity"
+        << nl;
+
+    meltPoolGeometryLogPtr.reset
+    (
+        new OFstream(postProcessingDataDir/"meltpool_geometry.csv")
+    );
+    meltPoolGeometryLogPtr()
+        << "time,keyholeDepth_um,meltPoolDepth_um,meltPoolWidth_um,"
+        << "laserX_m,laserY_m,laserZ_m"
+        << nl;
+}
+
 volScalarField rhoCp(rho*cp);
 rhoCp.oldTime();
 
@@ -775,6 +834,21 @@ volScalarField meltHistory
     ),
     mesh,
     dimensionedScalar("meltHistory", dimensionSet(0, 0, 0, -0, 0), 0.0)
+);
+
+// This variable stores the latest laser track ID that melted each cell
+volScalarField meltTrackID
+(
+    IOobject
+    (
+        "meltTrackID",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("meltTrackID", dimless, 0.0)
 );
 
 // This variable is 1 if (alpha.metal >= 0.5 and epsilon1 >=0.5), 0 otherwise

@@ -60,7 +60,17 @@
             getRefCellValue(p_rgh, pressureReference.refCell())
         );
 
-        p_rghEqn.solve();
+        SolverPerformance<scalar> pPerf = p_rghEqn.solve();
+
+        if (Pstream::master() && residualsLogPtr.valid())
+        {
+            residualsLogPtr()
+                << runTime.value() << ",p_rgh,"
+                << pPerf.initialResidual() << ","
+                << pPerf.finalResidual() << ","
+                << pPerf.nIterations()
+                << nl;
+        }
 
         if (pimple.finalNonOrthogonalIter())
         {

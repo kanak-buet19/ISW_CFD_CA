@@ -149,7 +149,10 @@ laserHeatSource::laserHeatSource
     laserNames_(0),
     laserDicts_(0),
     timeVsLaserPosition_(0),
-    timeVsLaserPower_(0)
+    timeVsLaserPower_(0),
+    lastInputPower_(0),
+    lastDepositedPower_(0),
+    lastLaserPosition_(vector::zero)
 {
     // Initialise the laser power and position
     if (found("lasers"))
@@ -302,6 +305,9 @@ void laserHeatSource::updateDeposition
     rayQ_ *= 0.0;
 
     const scalar time = deposition_.time().value();
+    lastInputPower_ = 0.0;
+    lastDepositedPower_ = 0.0;
+    lastLaserPosition_ = vector::zero;
 
     forAll(laserNames_, laserI)
     {
@@ -395,6 +401,13 @@ void laserHeatSource::updateDeposition
 
         Info<< "Laser position including any oscillation = "
             << currentLaserPosition << endl;
+
+        lastInputPower_ += currentLaserPower;
+
+        if (laserI == 0)
+        {
+            lastLaserPosition_ = currentLaserPosition;
+        }
 
         scalar laserRadius = 0.0;
         if (dict.found("HS_a") && dict.found("laserRadius"))
@@ -1160,6 +1173,7 @@ void laserHeatSource::updateDeposition
 
 
      const scalar TotalQ = fvc::domainIntegrate(deposition_).value();
+     lastDepositedPower_ = TotalQ;
      Info<< "Total Q deposited this timestep: " << TotalQ <<endl;
 
      // Combine rays across procs
