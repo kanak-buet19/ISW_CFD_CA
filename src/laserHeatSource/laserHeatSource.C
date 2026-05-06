@@ -22,6 +22,7 @@ License
 #include "constants.H"
 #include "findLocalCell.H"
 #include "SortableList.H"
+#include <cmath>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -149,7 +150,10 @@ laserHeatSource::laserHeatSource
     laserNames_(0),
     laserDicts_(0),
     timeVsLaserPosition_(0),
-    timeVsLaserPower_(0)
+    timeVsLaserPower_(0),
+    lastInputPower_(0),
+    lastDepositedPower_(0),
+    lastLaserPosition_(vector::zero)
 {
     // Initialise the laser power and position
     if (found("lasers"))
@@ -302,21 +306,277 @@ void laserHeatSource::updateDeposition
     rayQ_ *= 0.0;
 
     const scalar time = deposition_.time().value();
+    lastInputPower_ = 0.0;
+    lastDepositedPower_ = 0.0;
+    lastLaserPosition_ = vector::zero;
 
     forAll(laserNames_, laserI)
     {
+        // Dict for current laser
+        const dictionary& dict = laserDicts_[laserI];
+
         // Lookup the current laser position and power
         vector currentLaserPosition =
             timeVsLaserPosition_[laserI](time);
-        const scalar currentLaserPower =
-            timeVsLaserPower_[laserI](time);
+        const scalar baseLaserPower = timeVsLaserPower_[laserI](time);
+        scalar currentLaserPower = baseLaserPower;
+
+        if (dict.lookupOrDefault<Switch>("pulseLaser", false))
+        {
+            const scalar pulseFrequency
+            (
+                readScalar(dict.lookup("pulseFrequency"))
+            );
+            const scalar pulseDuration
+            (
+                readScalar(dict.lookup("pulseDuration"))
+            );
+            const scalar pulseOffPower
+            (
+                dict.lookupOrDefault<scalar>("pulseOffPower", 0.0)
+            );
+            const word pulseShape
+            (
+                dict.lookupOrDefault<word>("pulseShape", "square")
+            );
+            const word pulsePowerMode
+            (
+                dict.lookupOrDefault<word>("pulsePowerMode", "peak")
+            );
+            const scalar pulseRampUpFraction
+            (
+                dict.lookupOrDefault<scalar>("pulseRampUpFraction", -1.0)
+            );
+            const scalar pulseRampDownFraction
+            (
+                dict.lookupOrDefault<scalar>("pulseRampDownFraction", -1.0)
+            );
+            const scalar pulseRampUp =
+                pulseRampUpFraction >= 0.0
+              ? pulseRampUpFraction*pulseDuration
+              : dict.lookupOrDefault<scalar>("pulseRampUp", 0.0);
+            const scalar pulseRampDown =
+                pulseRampDownFraction >= 0.0
+              ? pulseRampDownFraction*pulseDuration
+              : dict.lookupOrDefault<scalar>("pulseRampDown", 0.0);
+            const scalar pulsePhase
+            (
+                dict.lookupOrDefault<scalar>("pulsePhase", 0.0)
+            );
+
+            if (pulseFrequency <= SMALL)
+            {
+                FatalErrorInFunction
+                    << "pulseFrequency must be greater than zero"
+                    << exit(FatalError);
+            }
+
+            const scalar pulsePeriod = 1.0/pulseFrequency;
+
+            if (pulseDuration < 0.0 || pulseDuration > pulsePeriod)
+            {
+                FatalErrorInFunction
+                    << "pulseDuration must be between 0 and the pulse period "
+                    << pulsePeriod << " s"
+                    << exit(FatalError);
+            }
+
+            if (pulseRampUp < 0.0 || pulseRampDown < 0.0)
+            {
+                FatalErrorInFunction
+                    << "pulseRampUp and pulseRampDown must be non-negative"
+                    << exit(FatalError);
+            }
+
+            if
+            (
+                pulseRampUpFraction > 1.0
+             || pulseRampDownFraction > 1.0
+            )
+            {
+                FatalErrorInFunction
+                    << "pulseRampUpFraction and pulseRampDownFraction must be "
+                    << "between 0 and 1"
+                    << exit(FatalError);
+            }
+
+            if (pulseRampUp + pulseRampDown > pulseDuration + SMALL)
+            {
+                FatalErrorInFunction
+                    << "pulseRampUp + pulseRampDown must be <= pulseDuration"
+                    << exit(FatalError);
+            }
+
+            scalar pulseMultiplier = 0.0;
+            scalar pulseAverageMultiplier = pulseDuration/pulsePeriod;
+
+            if (baseLaserPower > pulseOffPower + SMALL && pulseDuration > SMALL)
+            {
+                scalar pulseTime = fmod(time - pulsePhase, pulsePeriod);
+
+                if (pulseTime < 0.0)
+                {
+                    pulseTime += pulsePeriod;
+                }
+
+                if (pulseTime < pulseDuration)
+                {
+                    if (pulseShape == "square" || pulseShape == "onOff")
+                    {
+                        pulseMultiplier = 1.0;
+                    }
+                    else if (pulseShape == "linearRamp")
+                    {
+                        pulseMultiplier = 1.0;
+                        pulseAverageMultiplier =
+                            (
+                                pulseDuration
+                              - 0.5*pulseRampUp
+                              - 0.5*pulseRampDown
+                            )/pulsePeriod;
+
+                        if (pulseRampUp > SMALL && pulseTime < pulseRampUp)
+                        {
+                            pulseMultiplier = pulseTime/pulseRampUp;
+                        }
+                        else if
+                        (
+                            pulseRampDown > SMALL
+                         && pulseTime > pulseDuration - pulseRampDown
+                        )
+                        {
+                            pulseMultiplier =
+                                (pulseDuration - pulseTime)/pulseRampDown;
+                        }
+                    }
+                    else if (pulseShape == "cosineRamp")
+                    {
+                        pulseMultiplier = 1.0;
+                        pulseAverageMultiplier =
+                            (
+                                pulseDuration
+                              - 0.5*pulseRampUp
+                              - 0.5*pulseRampDown
+                            )/pulsePeriod;
+
+                        if (pulseRampUp > SMALL && pulseTime < pulseRampUp)
+                        {
+                            pulseMultiplier =
+                                0.5
+                               *(
+                                    1.0
+                                  - Foam::cos
+                                    (
+                                        constant::mathematical::pi
+                                       *pulseTime/pulseRampUp
+                                    )
+                                );
+                        }
+                        else if
+                        (
+                            pulseRampDown > SMALL
+                         && pulseTime > pulseDuration - pulseRampDown
+                        )
+                        {
+                            const scalar tDown =
+                                (pulseDuration - pulseTime)/pulseRampDown;
+
+                            pulseMultiplier =
+                                0.5
+                               *(
+                                    1.0
+                                  - Foam::cos
+                                    (
+                                        constant::mathematical::pi
+                                       *tDown
+                                    )
+                                );
+                        }
+                    }
+                    else if (pulseShape == "gaussian")
+                    {
+                        const scalar sigma =
+                            dict.lookupOrDefault<scalar>
+                            (
+                                "pulseGaussianSigma",
+                                pulseDuration/6.0
+                            );
+
+                        if (sigma <= SMALL)
+                        {
+                            FatalErrorInFunction
+                                << "pulseGaussianSigma must be greater than zero"
+                                << exit(FatalError);
+                        }
+
+                        const scalar pulseCenter = 0.5*pulseDuration;
+                        pulseMultiplier =
+                            Foam::exp
+                            (
+                               -0.5
+                               *sqr((pulseTime - pulseCenter)/sigma)
+                            );
+
+                        pulseAverageMultiplier =
+                            (
+                                sigma
+                               *Foam::sqrt
+                                (
+                                    constant::mathematical::pi/2.0
+                                )
+                               *(
+                                    std::erf
+                                    (
+                                        (pulseDuration - pulseCenter)
+                                       /(Foam::sqrt(2.0)*sigma)
+                                    )
+                                  - std::erf
+                                    (
+                                        -pulseCenter
+                                       /(Foam::sqrt(2.0)*sigma)
+                                    )
+                                )
+                            )/pulsePeriod;
+                    }
+                    else
+                    {
+                        FatalErrorInFunction
+                            << "Unknown pulseShape " << pulseShape
+                            << ". Valid options: square, onOff, linearRamp, "
+                            << "cosineRamp, gaussian"
+                            << exit(FatalError);
+                    }
+                }
+            }
+
+            if (pulsePowerMode == "average")
+            {
+                if (pulseAverageMultiplier <= SMALL)
+                {
+                    FatalErrorInFunction
+                        << "pulse average multiplier is zero; cannot use "
+                        << "pulsePowerMode average"
+                        << exit(FatalError);
+                }
+
+                pulseMultiplier /= pulseAverageMultiplier;
+            }
+            else if (pulsePowerMode != "peak")
+            {
+                FatalErrorInFunction
+                    << "Unknown pulsePowerMode " << pulsePowerMode
+                    << ". Valid options: peak, average"
+                    << exit(FatalError);
+            }
+
+            currentLaserPower =
+                pulseOffPower
+              + (baseLaserPower - pulseOffPower)*pulseMultiplier;
+        }
 
         Info<< "Laser " << laserNames_[laserI] << nl
             << "Laser mean position = " << currentLaserPosition << nl
             << "Laser power = " << currentLaserPower << endl;
-
-        // Dict for current laser
-        const dictionary& dict = laserDicts_[laserI];
 
         // If defined, add oscillation to laser position
         if (dict.found("HS_oscAmpX"))
@@ -340,6 +600,13 @@ void laserHeatSource::updateDeposition
 
         Info<< "Laser position including any oscillation = "
             << currentLaserPosition << endl;
+
+        lastInputPower_ += currentLaserPower;
+
+        if (laserI == 0)
+        {
+            lastLaserPosition_ = currentLaserPosition;
+        }
 
         scalar laserRadius = 0.0;
         if (dict.found("HS_a") && dict.found("laserRadius"))
@@ -1105,6 +1372,7 @@ void laserHeatSource::updateDeposition
 
 
      const scalar TotalQ = fvc::domainIntegrate(deposition_).value();
+     lastDepositedPower_ = TotalQ;
      Info<< "Total Q deposited this timestep: " << TotalQ <<endl;
 
      // Combine rays across procs

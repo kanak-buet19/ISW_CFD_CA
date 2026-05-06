@@ -1,0 +1,8 @@
+(
+    // One Connor pulse at the original 4 mm/s scan speed.
+    // Pulse is on for 7.1 ms, moving 28.4 um, then held during cooling.
+    // Coordinates: width - height - scan track.
+    (0          (0.6e-3 1.2e-3 0.4000e-3))
+    (0.0071     (0.6e-3 1.2e-3 0.4284e-3))
+    (0.0571     (0.6e-3 1.2e-3 0.4284e-3))
+)

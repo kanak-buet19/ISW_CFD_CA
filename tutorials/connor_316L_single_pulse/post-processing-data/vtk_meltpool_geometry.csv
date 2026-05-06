@@ -1,0 +1,2 @@
+time,z_slice_um,surface_y_um,T_liq_K,keyholeDepth_um,keyholeDepthX_um,keyholeDepthY_um,meltPoolDepth_um,meltPoolDepthX_um,meltPoolDepthY_um,keyholeWidth_um,keyholeWidthXLeft_um,keyholeWidthXRight_um,meltPoolWidth_um,meltPoolWidthXLeft_um,meltPoolWidthXRight_um
+0.0,6.24999984211172,700,1723.0,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan

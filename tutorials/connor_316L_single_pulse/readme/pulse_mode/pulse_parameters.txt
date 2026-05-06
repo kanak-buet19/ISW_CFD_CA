@@ -1,0 +1,9 @@
+peakPower_W 1050.0
+pulseFrequency_Hz 10.0
+pulsePeriod_s 0.1
+pulseDuration_s 0.0071
+dutyCycle 0.071
+pulseOffPower_W 0.0
+rampUp_s 0.001
+rampDown_s 0.001
+gaussianSigma_s 0.0011833333333333333

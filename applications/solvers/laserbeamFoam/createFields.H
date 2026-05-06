@@ -3,6 +3,21 @@
 
 const dimensionedScalar deltaN = 1e-8/pow(average(mesh.V()), 1.0/3.0);
 
+// Read track properties from a dedicated file
+IOdictionary trackProperties
+(
+    IOobject
+    (
+        "trackProperties",
+        runTime.constant(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+);
+
+const scalar trackDuration(readScalar(trackProperties.lookup("trackDuration")));
+
 Info<< "Reading field p_rgh\n" << endl;
 volScalarField p_rgh
 (
@@ -775,6 +790,21 @@ volScalarField meltHistory
     ),
     mesh,
     dimensionedScalar("meltHistory", dimensionSet(0, 0, 0, -0, 0), 0.0)
+);
+
+// This variable stores the latest laser track ID that melted each cell
+volScalarField meltTrackID
+(
+    IOobject
+    (
+        "meltTrackID",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("meltTrackID", dimless, 0.0)
 );
 
 // This variable is 1 if (alpha.metal >= 0.5 and epsilon1 >=0.5), 0 otherwise

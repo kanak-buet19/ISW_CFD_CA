@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    laserbeamFoam
+    laserbeamFoam_ISW
 
 Description
     Ray-Tracing heat source implementation with two phase incompressible VoF
@@ -84,6 +84,9 @@ int main(int argc, char *argv[])
     {
         #include "readControls.H"
         #include "readDyMControls.H"
+
+        // Automated track ID calculation
+        label currentTrack = floor(runTime.value() / trackDuration) + 1;
 
         if (LTS)
         {
@@ -218,6 +221,14 @@ int main(int argc, char *argv[])
             mesh.lookupObject<volScalarField>("alpha.metal");
         condition = pos(alphaMetal - 0.5) * pos(epsilon1 - 0.5);
         meltHistory += condition;
+
+        forAll(meltTrackID, celli)
+        {
+            if (condition[celli] > 0.5)
+            {
+                meltTrackID[celli] = currentTrack;
+            }
+        }
 
         runTime.write();
 

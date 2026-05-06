@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Source tutorial clean functions (assumes WM_PROJECT_DIR is set)
+. $WM_PROJECT_DIR/bin/tools/CleanFunctions
+
+# Clean subcase
+(cd DEM_small && sh ./Allclean)
+
+# Kill any background watcher processes
+pkill -f "watch_reconstruct_slices.sh" 2>/dev/null || true
+pkill -f "watch_vtk_plots.sh" 2>/dev/null || true
+
+# Standard OpenFOAM cleanup
+cleanCase
+
+echo "Removing 0, VTKs, and leftover output/log files"
+
+rm -rf 0 VTKs
+
+# remove common job output/log files
+rm -f *.out *.err *.log
+
+# remove the literal '$log' file if present
+rm -f '$log'
+
+rm -rf testing/vtk 
+rm -rf testing/plots
+
+rm -rf testing/*
+
+rm -rf slice_plots
+
+rm -rf post-processing-data

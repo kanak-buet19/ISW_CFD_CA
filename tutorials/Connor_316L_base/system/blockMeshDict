@@ -1,0 +1,231 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\    /    A nd          | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+convertToMeters 1.0;
+
+// Coordinate convention:
+//   x = width  = 2400 um
+//   y = length = 4000 um, welding/scan direction
+//   z = depth  = 1000 um, plate thickness direction
+
+vertices
+(
+    // z = 0
+    (0          0          0)         // 0
+    (0.7e-3    0          0)         // 1
+    (1.7e-3    0          0)         // 2
+    (2.4e-3    0          0)         // 3
+    (0          4.0e-3    0)         // 4
+    (0.7e-3    4.0e-3    0)         // 5
+    (1.7e-3    4.0e-3    0)         // 6
+    (2.4e-3    4.0e-3    0)         // 7
+
+    // z = 200 um, coarse/dense solid transition
+    (0          0          0.2e-3)   // 8
+    (0.7e-3    0          0.2e-3)   // 9
+    (1.7e-3    0          0.2e-3)   // 10
+    (2.4e-3    0          0.2e-3)   // 11
+    (0          4.0e-3    0.2e-3)   // 12
+    (0.7e-3    4.0e-3    0.2e-3)   // 13
+    (1.7e-3    4.0e-3    0.2e-3)   // 14
+    (2.4e-3    4.0e-3    0.2e-3)   // 15
+
+    // z = 700 um, solid/gas interface
+    (0          0          0.7e-3)   // 16
+    (0.7e-3    0          0.7e-3)   // 17
+    (1.7e-3    0          0.7e-3)   // 18
+    (2.4e-3    0          0.7e-3)   // 19
+    (0          4.0e-3    0.7e-3)   // 20
+    (0.7e-3    4.0e-3    0.7e-3)   // 21
+    (1.7e-3    4.0e-3    0.7e-3)   // 22
+    (2.4e-3    4.0e-3    0.7e-3)   // 23
+
+    // z = 900 um, dense/coarse gas transition
+    (0          0          0.9e-3)   // 24
+    (0.7e-3    0          0.9e-3)   // 25
+    (1.7e-3    0          0.9e-3)   // 26
+    (2.4e-3    0          0.9e-3)   // 27
+    (0          4.0e-3    0.9e-3)   // 28
+    (0.7e-3    4.0e-3    0.9e-3)   // 29
+    (1.7e-3    4.0e-3    0.9e-3)   // 30
+    (2.4e-3    4.0e-3    0.9e-3)   // 31
+
+    // z = 1000 um, top of gas
+    (0          0          1.0e-3)   // 32
+    (0.7e-3    0          1.0e-3)   // 33
+    (1.7e-3    0          1.0e-3)   // 34
+    (2.4e-3    0          1.0e-3)   // 35
+    (0          4.0e-3    1.0e-3)   // 36
+    (0.7e-3    4.0e-3    1.0e-3)   // 37
+    (1.7e-3    4.0e-3    1.0e-3)   // 38
+    (2.4e-3    4.0e-3    1.0e-3)   // 39
+);
+
+blocks
+(
+    // HPC mesh:
+    //   x = 0-700 um and 1700-2400 um: coarse side margins
+    //   x = 700-1700 um: refined weld zone around laser center
+    //   z = 0-200 um: coarse lower solid
+    //   z = 200-700 um: dense upper solid
+    //   z = 700-900 um: dense lower gas
+    //   z = 900-1000 um: coarse upper gas
+    // Active 64-core mesh:
+    //   54 x 101 x 59 = 321,786 cells total, about 5,028 cells/core on 64 cores.
+    //
+    // Optional 20k cells/core mesh for 64 cores:
+    //   target = 20,000 x 64 = 1,280,000 cells
+    //   use x = (10 66 10), y = 160, z = (17 51 20 5)
+    //   86 x 160 x 93 = 1,279,680 cells total, about 19,995 cells/core.
+    //
+    // To switch to the 20k/core mesh, replace the active blocks below with:
+    //
+    hex (0 1 5 4 8 9 13 12)        (10 160 17) simpleGrading (1 1 1)
+    hex (1 2 6 5 9 10 14 13)       (66 160 17) simpleGrading (1 1 1)
+    hex (2 3 7 6 10 11 15 14)      (10 160 17) simpleGrading (1 1 1)
+    hex (8 9 13 12 16 17 21 20)    (10 160 51) simpleGrading (1 1 1)
+    hex (9 10 14 13 17 18 22 21)   (66 160 51) simpleGrading (1 1 1)
+    hex (10 11 15 14 18 19 23 22)  (10 160 51) simpleGrading (1 1 1)
+    hex (16 17 21 20 24 25 29 28)  (10 160 20) simpleGrading (1 1 1)
+    hex (17 18 22 21 25 26 30 29)  (66 160 20) simpleGrading (1 1 1)
+    hex (18 19 23 22 26 27 31 30)  (10 160 20) simpleGrading (1 1 1)
+    hex (24 25 29 28 32 33 37 36)  (10 160 5) simpleGrading (1 1 1)
+    hex (25 26 30 29 33 34 38 37)  (66 160 5) simpleGrading (1 1 1)
+    hex (26 27 31 30 34 35 39 38)  (10 160 5) simpleGrading (1 1 1)
+
+    //medium mesh for 32 cores
+    // hex (0 1 5 4 8 9 13 12)        (6 101 11) simpleGrading (1 1 1)
+    // hex (1 2 6 5 9 10 14 13)       (42 101 11) simpleGrading (1 1 1)
+    // hex (2 3 7 6 10 11 15 14)      (6 101 11) simpleGrading (1 1 1)
+    // hex (8 9 13 12 16 17 21 20)    (6 101 32) simpleGrading (1 1 1)
+    // hex (9 10 14 13 17 18 22 21)   (42 101 32) simpleGrading (1 1 1)
+    // hex (10 11 15 14 18 19 23 22)  (6 101 32) simpleGrading (1 1 1)
+    // hex (16 17 21 20 24 25 29 28)  (6 101 13) simpleGrading (1 1 1)
+    // hex (17 18 22 21 25 26 30 29)  (42 101 13) simpleGrading (1 1 1)
+    // hex (18 19 23 22 26 27 31 30)  (6 101 13) simpleGrading (1 1 1)
+    // hex (24 25 29 28 32 33 37 36)  (6 101 3) simpleGrading (1 1 1)
+    // hex (25 26 30 29 33 34 38 37)  (42 101 3) simpleGrading (1 1 1)
+    // hex (26 27 31 30 34 35 39 38)  (6 101 3) simpleGrading (1 1 1)
+
+
+    //coarse mesh 
+    // hex (0 1 5 4 8 9 13 12)        (4 80 8) simpleGrading (1 1 1)
+    // hex (1 2 6 5 9 10 14 13)       (28 80 8) simpleGrading (1 1 1)
+    // hex (2 3 7 6 10 11 15 14)      (4 80 8) simpleGrading (1 1 1)
+    // hex (8 9 13 12 16 17 21 20)    (4 80 24) simpleGrading (1 1 1)
+    // hex (9 10 14 13 17 18 22 21)   (28 80 24) simpleGrading (1 1 1)
+    // hex (10 11 15 14 18 19 23 22)  (4 80 24) simpleGrading (1 1 1)
+    // hex (16 17 21 20 24 25 29 28)  (4 80 10) simpleGrading (1 1 1)
+    // hex (17 18 22 21 25 26 30 29)  (28 80 10) simpleGrading (1 1 1)
+    // hex (18 19 23 22 26 27 31 30)  (4 80 10) simpleGrading (1 1 1)
+    // hex (24 25 29 28 32 33 37 36)  (4 80 2) simpleGrading (1 1 1)
+    // hex (25 26 30 29 33 34 38 37)  (28 80 2) simpleGrading (1 1 1)
+    // hex (26 27 31 30 34 35 39 38)  (4 80 2) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    back
+    {
+        type patch;
+        faces
+        (
+            (0 8 12 4)
+            (8 16 20 12)
+            (16 24 28 20)
+            (24 32 36 28)
+        );
+    }
+    front
+    {
+        type patch;
+        faces
+        (
+            (3 7 15 11)
+            (11 15 23 19)
+            (19 23 31 27)
+            (27 31 39 35)
+        );
+    }
+    leftWall
+    {
+        type patch;
+        faces
+        (
+            (0 1 9 8)
+            (1 2 10 9)
+            (2 3 11 10)
+            (8 9 17 16)
+            (9 10 18 17)
+            (10 11 19 18)
+            (16 17 25 24)
+            (17 18 26 25)
+            (18 19 27 26)
+            (24 25 33 32)
+            (25 26 34 33)
+            (26 27 35 34)
+        );
+    }
+    rightWall
+    {
+        type patch;
+        faces
+        (
+            (4 12 13 5)
+            (5 13 14 6)
+            (6 14 15 7)
+            (12 20 21 13)
+            (13 21 22 14)
+            (14 22 23 15)
+            (20 28 29 21)
+            (21 29 30 22)
+            (22 30 31 23)
+            (28 36 37 29)
+            (29 37 38 30)
+            (30 38 39 31)
+        );
+    }
+    topWall
+    {
+        type patch;
+        faces
+        (
+            (32 33 37 36)
+            (33 34 38 37)
+            (34 35 39 38)
+        );
+    }
+    bottomWall
+    {
+        type wall;
+        faces
+        (
+            (0 4 5 1)
+            (1 5 6 2)
+            (2 6 7 3)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

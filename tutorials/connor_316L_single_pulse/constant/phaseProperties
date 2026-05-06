@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      phaseProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+phases          (metal gas);
+
+// AISI 316L / stainless-steel approximate phase-interface properties.
+// Connor/Riffel paper condition: high vacuum, Earth gravity handled in constant/g.
+
+sigma           1.8;
+
+dsigmadT        -4.9e-4;
+
+p0              101325.0;
+p_amb           1.33e-3; // 1e-6 Torr high vacuum
+
+beta_r          0.8;
+
+Tvap            2379;
+Tvap_atm        3134;
+
+Mm              0.055;
+
+LatentHeatVap   6.33e6;
+
+
+// ************************************************************************* //

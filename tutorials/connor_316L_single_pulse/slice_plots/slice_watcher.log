@@ -1,0 +1,113 @@
+[2026-05-06 00:45:41] Using SLICE_PYTHON=python3
+[2026-05-06 00:45:42] Meltpool analysis watcher started in /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse
+[2026-05-06 00:45:44] Processing time 0
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+Build  : 10-c4cf895ad8fa
+Exec   : reconstructPar -time 0
+Date   : May 06 2026
+Time   : 00:45:44
+Host   : "f7d33d82a90e"
+PID    : 1697
+I/O    : uncollated
+Case   : /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 10)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+--> FOAM Warning : 
+    From function static Foam::instantList Foam::timeSelector::select0(Foam::Time&, const Foam::argList&)
+    in file db/Time/timeSelector.C at line 269
+    No time specified or available, selecting 'constant'
+
+
+Reconstructing fields for mesh region0
+
+Time = 0s
+
+Reconstructing FV fields
+
+No FV fields
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+
+End
+
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+Build  : 10-c4cf895ad8fa
+Exec   : foamToVTK -time 0 -useTimeName
+Date   : May 06 2026
+Time   : 00:45:46
+Host   : "f7d33d82a90e"
+PID    : 1698
+I/O    : uncollated
+Case   : /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 10)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create mesh for time = 0
+
+Time: 0
+    volScalarFields            : alpha.metal TRHS Laser_boundary T p_rgh
+    volVectorFields            : U
+
+    Internal  : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/connor_316L_single_pulse_0.vtk"
+    Original cells:126720 points:134865   Additional cells:0  additional points:0
+
+Combining patches:
+    patch 0 back
+    patch 1 front
+    patch 2 leftWall
+    patch 3 rightWall
+    patch 4 topWall
+    patch 5 bottomWall
+    Patch     : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/back/back_0.vtk"
+    Patch     : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/front/front_0.vtk"
+    Patch     : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/leftWall/leftWall_0.vtk"
+    Patch     : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/rightWall/rightWall_0.vtk"
+    Patch     : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/topWall/topWall_0.vtk"
+    Patch     : "/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/bottomWall/bottomWall_0.vtk"
+End
+
+Wrote /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/VTK/connor_316L_single_pulse.vtk.series with 1 files
+/home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/scripts/analyze_meltpool_vtk.py:480: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  ax.legend(frameon=True, facecolor="white", edgecolor="black", fontsize=8)
+Analyzing connor_316L_single_pulse_0.vtk
+No alpha.metal = 0.5 contour found below y = 700.0 um
+No T = 1723 K contour found.
+connor_316L_single_pulse_0.vtk: using fallback z for XY slice = 6.250 um
+No alpha.metal = 0.5 contour found below y = 700.0 um
+No T = 1723 K contour found.
+Less than 2 T = 1723 K intersections with y = 700.0 um
+Less than 2 alpha.metal = 0.5 intersections with y = 700.0 um
+Wrote /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/post-processing-data/vtk_meltpool_geometry.csv
+Wrote PDF sections to /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse/post-processing-data/vtk_sections
+[2026-05-06 00:45:52] analyze_meltpool_vtk done for 0
+[2026-05-06 00:45:52] Finished time 0
+[2026-05-06 00:48:48] Solver done marker found; final scan
+[2026-05-06 00:48:48] Meltpool analysis watcher exiting

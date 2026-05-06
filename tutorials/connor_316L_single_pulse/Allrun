@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+set -Eeo pipefail
+
+CASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$CASE_DIR"
+
+SLICE_WATCHER_PID=""
+
+finish_watcher()
+{
+    if [ -d slice_plots ]; then
+        touch slice_plots/.solverDone
+    fi
+
+    if [ -n "$SLICE_WATCHER_PID" ]; then
+        wait "$SLICE_WATCHER_PID" || true
+    fi
+}
+
+on_error()
+{
+    local status="$?"
+    local line="${BASH_LINENO[0]:-unknown}"
+    local command="${BASH_COMMAND:-unknown}"
+
+    echo
+    echo "ERROR: Allrun failed"
+    echo "Exit status: $status"
+    echo "Line: $line"
+    echo "Command: $command"
+    echo "Working directory: $PWD"
+    echo "Time: $(date)"
+    echo
+
+    finish_watcher
+    exit "$status"
+}
+
+trap on_error ERR
+
+echo "=== Single-pulse Allrun bootstrap ==="
+echo "Case directory: $CASE_DIR"
+echo "Launch directory: $PWD"
+echo "Shell: $SHELL"
+echo "Time: $(date)"
+echo "===================================="
+
+export MPLCONFIGDIR="${MPLCONFIGDIR:-$CASE_DIR/.mplconfig}"
+mkdir -p "$MPLCONFIGDIR"
+
+if [ -z "${WM_PROJECT_DIR:-}" ]; then
+    if [ -f /opt/openfoam10/etc/bashrc ]; then
+        export WM_PROJECT_DIR=/opt/openfoam10
+    elif [ -f "$HOME/OpenFOAM/OpenFOAM-10/etc/bashrc" ]; then
+        export WM_PROJECT_DIR="$HOME/OpenFOAM/OpenFOAM-10"
+    else
+        echo "ERROR: WM_PROJECT_DIR is unset and OpenFOAM-10 bashrc was not found."
+        echo "Source OpenFOAM first, or set WM_PROJECT_DIR before running Allrun."
+        exit 1
+    fi
+fi
+
+echo "Sourcing OpenFOAM: $WM_PROJECT_DIR/etc/bashrc"
+trap - ERR
+set +e
+source "$WM_PROJECT_DIR/etc/bashrc"
+OPENFOAM_SOURCE_STATUS=$?
+set -e
+trap on_error ERR
+
+echo "OpenFOAM source exit status: $OPENFOAM_SOURCE_STATUS"
+if [ "$OPENFOAM_SOURCE_STATUS" -ne 0 ]; then
+    echo "WARNING: OpenFOAM bashrc returned nonzero status during setup."
+fi
+
+export FOAM_SIGFPE=0
+
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+RESTART="${RESTART:-0}"
+NP="${NP:-$(awk '/numberOfSubdomains/ {gsub(/;/, "", $2); print $2; exit}' system/decomposeParDict)}"
+SLICE_PYTHON="${SLICE_PYTHON:-python3}"
+export SLICE_PYTHON
+
+echo "=== Environment Check ==="
+command -v mpirun
+mpirun --version | head -3
+echo "WM_PROJECT_DIR=$WM_PROJECT_DIR"
+echo "WM_PROJECT_VERSION=${WM_PROJECT_VERSION:-unset}"
+echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+echo "FOAM_APPBIN=${FOAM_APPBIN:-unset}"
+command -v blockMesh
+command -v setSolidFraction
+command -v transformPoints
+command -v decomposePar
+command -v reconstructPar
+command -v foamToVTK
+command -v laserbeamFoam_ISW
+echo "NP=$NP"
+echo "Restart mode: $RESTART"
+echo "========================="
+
+if [ "$RESTART" = "1" ]; then
+    echo "=== Manual restart mode ==="
+
+    if ! find processor0 -maxdepth 1 -mindepth 1 -type d 2>/dev/null | grep -q .; then
+        echo "ERROR: RESTART=1 was requested, but processor0 time folders were not found."
+        echo "Cannot restart. Run without RESTART=1 for a fresh run."
+        exit 1
+    fi
+
+    echo "Keeping existing 0/, processor*/, mesh, and latest decomposed time folders."
+    echo "Solver will restart because controlDict has startFrom latestTime."
+else
+    echo "=== Fresh run mode ==="
+
+    echo "Removing old run data"
+    rm -rf 0 processor* VTK VTKs post-processing-data slice_plots
+    rm -f log.* *.OpenFOAM
+
+    echo "Copying 'initial' to 0"
+    cp -r initial 0
+
+    echo "Running blockMesh"
+    runApplication -o blockMesh
+
+    echo "Running setSolidFraction"
+    runApplication -o setSolidFraction
+
+    echo "Running transformPoints with rotation"
+    runApplication -o transformPoints "rotate=((0 1 0) (0 0 1))"
+
+    echo "Decomposing domain for parallel run"
+    decomposePar || exit 1
+fi
+
+echo "=== Python watcher/post-processing environment check ==="
+command -v "$SLICE_PYTHON"
+"$SLICE_PYTHON" - <<'PY'
+import importlib
+import sys
+
+required = ["vtk", "matplotlib", "numpy", "pandas", "pyvista", "scipy"]
+missing = []
+
+for module in required:
+    try:
+        importlib.import_module(module)
+    except Exception as exc:
+        missing.append(f"{module}: {exc}")
+
+if missing:
+    print("ERROR: missing Python modules needed by watcher/post-processing scripts:")
+    for item in missing:
+        print(f"  - {item}")
+    sys.exit(1)
+
+print("Python environment OK: all watcher/post-processing modules imported.")
+PY
+echo "======================================================="
+
+mkdir -p slice_plots
+rm -f slice_plots/.solverDone
+
+chmod +x scripts/watch_reconstruct_slices.sh
+./scripts/watch_reconstruct_slices.sh "$PWD" &
+SLICE_WATCHER_PID=$!
+
+echo "Starting parallel laserbeamFoam_ISW simulation with $NP ranks"
+set +e
+mpirun --oversubscribe -np "$NP" laserbeamFoam_ISW -parallel
+SOLVER_STATUS=$?
+set -e
+
+finish_watcher
+
+echo "Solver finished with exit code: $SOLVER_STATUS"
+
+if [ "$SOLVER_STATUS" -ne 0 ]; then
+    echo "laserbeamFoam_ISW failed with status $SOLVER_STATUS"
+    exit "$SOLVER_STATUS"
+fi
+
+echo "Reconstructing fields from parallel run"
+reconstructPar
+
+echo "Converting to VTK format"
+foamToVTK -useTimeName
+
+echo "Writing ParaView VTK series file"
+"$SLICE_PYTHON" scripts/write_vtk_series.py VTK
+
+echo "Allrun completed at: $(date)"

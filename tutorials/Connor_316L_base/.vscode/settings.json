@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "decomposepardict": "cpp",
+        "laserproperties": "cpp",
+        "controldict": "cpp",
+        "*.metal": "cpp"
+    }
+}

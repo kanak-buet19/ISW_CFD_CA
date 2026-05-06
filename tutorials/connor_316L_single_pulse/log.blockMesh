@@ -1,0 +1,120 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+Build  : 10-c4cf895ad8fa
+Exec   : blockMesh
+Date   : May 06 2026
+Time   : 00:45:37
+Host   : "f7d33d82a90e"
+PID    : 1586
+I/O    : uncollated
+Case   : /home/of10/ISW_CFD_CA_old/tutorials/connor_316L_single_pulse
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 10)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Reading "blockMeshDict"
+
+Creating block mesh from
+    "system/blockMeshDict"
+Creating block edges
+No non-planar block faces defined
+Creating topology blocks
+Creating topology patches
+
+Creating block mesh topology
+
+Check topology
+
+	Basic statistics
+		Number of internal faces : 17
+		Number of boundary faces : 38
+		Number of defined boundary faces : 38
+		Number of undefined boundary faces : 0
+	Checking patch -> block consistency
+
+Creating block offsets
+Creating merge list .
+
+Creating polyMesh from blockMesh
+Creating patches
+Creating cells
+Creating points with scale 1
+    Block 0 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 8.75e-05 .. 8.75e-05
+    Block 1 cell size :
+        i : 1.785714286e-05 .. 1.785714286e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 8.75e-05 .. 8.75e-05
+    Block 2 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 8.75e-05 .. 8.75e-05
+    Block 3 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 2.083333333e-05 .. 2.083333333e-05
+    Block 4 cell size :
+        i : 1.785714286e-05 .. 1.785714286e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 2.083333333e-05 .. 2.083333333e-05
+    Block 5 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 2.083333333e-05 .. 2.083333333e-05
+    Block 6 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 2e-05
+    Block 7 cell size :
+        i : 1.785714286e-05 .. 1.785714286e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 2e-05
+    Block 8 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 2e-05
+    Block 9 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 5e-05 .. 5e-05
+    Block 10 cell size :
+        i : 1.785714286e-05 .. 1.785714286e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 5e-05 .. 5e-05
+    Block 11 cell size :
+        i : 8.75e-05 .. 8.75e-05
+        j : 1.25e-05 .. 1.25e-05
+        k : 5e-05 .. 5e-05
+
+Writing polyMesh
+----------------
+Mesh Information
+----------------
+  boundingBox: (0 0 0) (0.0012 0.001 0.0015)
+  nPoints: 134865
+  nCells: 126720
+  nFaces: 388144
+  nInternalFaces: 372176
+----------------
+Patches
+----------------
+  patch 0 (start: 372176 size: 3520) name: back
+  patch 1 (start: 375696 size: 3520) name: front
+  patch 2 (start: 379216 size: 1584) name: leftWall
+  patch 3 (start: 380800 size: 1584) name: rightWall
+  patch 4 (start: 382384 size: 2880) name: topWall
+  patch 5 (start: 385264 size: 2880) name: bottomWall
+
+End
+

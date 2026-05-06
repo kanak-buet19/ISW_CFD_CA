@@ -1,0 +1,55 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      PhaseFieldProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// V_incident	(0 1 0);//(0 1 0);//NORMALISED IN CODE
+V_incident (0 1 0) ; 
+
+timeVsLaserPosition
+{
+    file    "$FOAM_CASE/constant/timeVsLaserPosition";
+    outOfBounds clamp;
+}
+
+timeVsLaserPower
+{
+    file    "$FOAM_CASE/constant/timeVsLaserPower";
+    outOfBounds clamp;
+}
+
+// Connor/Riffel 316L single-pulse LBW settings:
+// 1050 W peak power, 7.1 ms pulse time, 10 Hz nominal frequency.
+// system/controlDict ends at 57.1 ms, so only the first pulse is present;
+// the remaining 50 ms is cooling time before the next 100 ms pulse period.
+// timeVsLaserPower is treated as the on-pulse power.
+pulseLaser true;
+pulseFrequency 10;       // Hz
+pulseDuration 0.0071;    // s
+pulseOffPower 0;         // W
+pulseShape square;
+pulsePowerMode peak;
+
+laserRadius 95.5e-6; // 191 um spot diameter
+
+N_sub_divisions	1;
+
+
+
+wavelength	1.070e-6;
+e_num_density	4e29;
+
+Radius_Flavour	2.0;
+
+PowderSim false;
